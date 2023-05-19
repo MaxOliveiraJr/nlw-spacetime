@@ -3,6 +3,6 @@
         "@rocketseat/eslint-config/react"
     ],
     "rules": {
-        "camlcase": "off"
+        "camelcase": "off"
     }
 }
