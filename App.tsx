@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar'
 import { ImageBackground, View, Text, TouchableOpacity } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 
 import {
   useFonts,
@@ -12,7 +13,17 @@ import bgBlur from './src/assets/bg-blur.png'
 import Stripes from './src/assets/stripes.svg'
 import NLWLogo from './src/assets/nlew-spacetime.svg'
 import { styled } from 'nativewind'
+import { useAuthRequest, makeRedirectUri } from 'expo-auth-session'
+import { useEffect } from 'react'
+import { api } from './src/lib/api'
 const StyledStripes = styled(Stripes)
+
+const discovery = {
+  authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+  tokenEndpoint: 'https://github.com/login/oauth/access_token',
+  revocationEndpoint:
+    'https://github.com/settings/connections/applications/7e40148d2796c5458fa5',
+}
 
 export default function App() {
   const [hasLoadedFonts] = useFonts({
@@ -20,6 +31,36 @@ export default function App() {
     Roboto_700Bold,
     BaiJamjuree_700Bold,
   })
+
+  const [request, response, signInWithGithub] = useAuthRequest(
+    {
+      clientId: '7e40148d2796c5458fa5',
+      scopes: ['identity'],
+      redirectUri: makeRedirectUri({
+        scheme: 'nlwspacetime',
+      }),
+    },
+    discovery,
+  )
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { code } = response.params
+
+      api
+        .post('/register', {
+          code,
+        })
+        .then((response) => {
+          const { token } = response.data
+
+          SecureStore.setItemAsync('token', token)
+        })
+        .catch((err) => {
+          console.error(err)
+        })
+    }
+  }, [response])
 
   if (!hasLoadedFonts) {
     return null
@@ -34,7 +75,7 @@ export default function App() {
       <StyledStripes className="absolute left-2"></StyledStripes>
       <View className="flex-1 items-center justify-center gap-6">
         <NLWLogo />
-        <View className="space-y-2">
+        <View className="space-y-2 px-5">
           <Text className="text-center font-title text-2xl leading-tight text-gray-50">
             Sua cápsula do tempo
           </Text>
@@ -42,15 +83,16 @@ export default function App() {
             Colecione momentos marcantes da sua jornada e compartilhe (se
             quiser) com o mundo!
           </Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            className="rounded-full bg-green-500 px-5 py-3"
-          >
-            <Text className="text-center font-alt text-sm uppercase text-black">
-              Cadastrar Lembrança
-            </Text>
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          className="min-h-min rounded-full bg-green-500 px-5 py-2"
+          onPress={() => signInWithGithub()}
+        >
+          <Text className="text-center font-alt text-sm uppercase text-black">
+            Cadastrar Lembrança
+          </Text>
+        </TouchableOpacity>
       </View>
       <Text className="text-center font-body text-sm  leading-relaxed text-gray-200">
         Feito com 💜 no NLW da Rocketseat
